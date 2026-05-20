@@ -1,0 +1,32 @@
+# Dependencies
+*.d
+
+# Compiled Object Files & Libraries
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+
+# CMake Build Output Channels
+/build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local ML & Optimization Files
+/data/
+*.pth
+*.pt
+.env
+
+# System Files
+.DS_Store

@@ -5,6 +5,7 @@
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include "controller.h"
 
 // Shared resources
 std::mutex mtx;
@@ -15,6 +16,8 @@ void physics_thread(mjModel* m, mjData* d) {
     // Match the timestep defined in sweeping_scene.xml (0.002s = 2ms = 500 Hz)
     auto timestep = std::chrono::milliseconds(2);
 
+    SweeperController controller(90.0, 10.0);
+
     while (!exit_simulation) {
         auto next_tick = std::chrono::steady_clock::now() + timestep;
 
@@ -22,10 +25,11 @@ void physics_thread(mjModel* m, mjData* d) {
         {
             // Lock only for the math
             std::lock_guard<std::mutex> lock(mtx);
-            
-            // Apply a hardcoded sine wave to the first joint to see it move
-            d->ctrl[0] = 1.5 * sin(d->time); 
-            d->ctrl[1] = -1.0 + 0.5 * sin(d->time * 0.5); // Dynamic torque profile to simulate reach and sweep motion
+            double target[7] = {0.0};
+            target[0] = sin(d->time);               // Base swings left/right
+            target[1] = -0.5 + 0.2*sin(d->time);    // Shoulder moves up/down gently
+            target[2] = 1.0;                        // Elbow stays bent
+            controller.compute(m, d, target);
             mj_step(m, d);
         }
 

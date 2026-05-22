@@ -9,7 +9,7 @@ find_package(mujoco REQUIRED)
 find_package(glfw3 REQUIRED)
 
 # Define compilation target executable
-add_executable(vla_sim_runner src/main.cpp)
+add_executable(vla_sim_runner src/main.cpp src/controller.cpp)
 
 # Link the physics engine and graphics rendering dependencies
 target_link_libraries(vla_sim_runner PRIVATE mujoco::mujoco glfw)

@@ -1,7 +1,7 @@
 <mujoco>
     <!-- Define the coordinate system -->
     <compiler angle="degree" coordinate="local"/>
-    <option integrator="Euler" timestep="0.01" gravity="0 0 -9.81"/>
+    <option integrator="Euler" timestep="0.002" gravity="0 0 -9.81"/>
     
     <statistic center="0 -0.15 0.4" extent="0.8"/>
 

@@ -41,6 +41,10 @@ int main() {
     mjr_makeContext(m, &con, mjFONTSCALE_150);
 
     while (!glfwWindowShouldClose(window)) {
+        // Apply a hardcoded sine wave to the first joint to see it move
+        d->ctrl[0] = 1.5 * sin(d->time); 
+        d->ctrl[1] = -1.0; // Constant torque to help lift the arm
+
         double start_time = d->time;
         while (d->time - start_time < 0.01) { // Only allow 10ms of physics work per frame
             mj_step(m, d);

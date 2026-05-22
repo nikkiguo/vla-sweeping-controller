@@ -25,4 +25,4 @@ Run the simulator from within the `build` directory:
 ```
 
 ## Progress
-**Week 1 (17/05/2026):** Reviewed MuJoCo docs and initialized workspace. Custom environment `sweeping_scene.xml` created with dynamic physical pucks (red square, blue circle, green square) and dual target landing zones with target task defined. Integrated base UR5e asset.
+**Week 1 (17/05/2026):** Reviewed MuJoCo docs and initialized workspace. Custom environment `sweeping_scene.xml` created with dynamic physical pucks (red square, blue circle, green square) and dual target landing zones with target task defined. Integrated base UR5e asset and tested hardcoded joint movement. Developed a multi-threaded architecture to decouple physics calculations from visual rendering.

@@ -5,14 +5,20 @@
 #include <mutex>
 #include <chrono>
 #include <atomic>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <cstring>
 #include "controller.h"
+#include "ipc_common.h"
 
 // Shared resources
 std::mutex mtx;
 std::atomic<bool> exit_simulation{false};
 
 // Physics thread function
-void physics_thread(mjModel* m, mjData* d) {
+void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
     // Match the timestep defined in sweeping_scene.xml (0.002s = 2ms = 500 Hz)
     auto timestep = std::chrono::milliseconds(2);
 
@@ -25,12 +31,17 @@ void physics_thread(mjModel* m, mjData* d) {
         {
             // Lock only for the math
             std::lock_guard<std::mutex> lock(mtx);
-            double target[7] = {0.0};
+            double target[6] = {0.0};
             target[0] = sin(d->time);               // Base swings left/right
             target[1] = -0.5 + 0.2*sin(d->time);    // Shoulder moves up/down gently
             target[2] = 1.0;                        // Elbow stays bent
             controller.compute(m, d, target);
             mj_step(m, d);
+
+            // Update shared memory with new state (positions and camera pixels)
+            shm->frame_index.fetch_add(1, std::memory_order_relaxed);
+            mju_copy(shm->joint_states, d->qpos, 6);
+            shm->frame_index.fetch_add(1, std::memory_order_release);
         }
 
         // Enforce 500Hz loop rate (2ms per step)
@@ -58,7 +69,7 @@ int main() {
         return 1;
     }
     
-    GLFWwindow* window = glfwCreateWindow(800, 600, "VLA Sweeping Sandbox", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(640, 480, "VLA Sweeping Sandbox", NULL, NULL);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         mj_deleteModel(m);
@@ -78,8 +89,13 @@ int main() {
     mjv_makeScene(m, &scn, 2000);
     mjr_makeContext(m, &con, mjFONTSCALE_150);
 
+    // Setup shared memory for IPC
+    int shm_fd = shm_open("/robot_data_shm", O_CREAT | O_RDWR, 0666);
+    ftruncate(shm_fd, sizeof(SharedDataStruct));
+    SharedDataStruct* shm = (SharedDataStruct*)mmap(NULL, sizeof(SharedDataStruct), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
+
     // Start the physics thread
-    std::thread physics_worker(physics_thread, m, d_physics);
+    std::thread physics_worker(physics_thread, m, d_physics, shm);
 
     while (!glfwWindowShouldClose(window)) {
         {
@@ -95,9 +111,20 @@ int main() {
         mj_forward(m, d_render);
 
         // Render the scene
-        mjrRect viewport = {0, 0, 800, 600};
+        mjrRect viewport = {0, 0, 640, 480};
         mjv_updateScene(m, d_render, &opt, NULL, &cam, mjCAT_ALL, &scn);
         mjr_render(viewport, &scn, &con);
+
+        // Capture framebuffer and write to shared memory (every 10 frames to match consumer display rate)
+        {
+            static int frame_count = 0;
+            if (frame_count++ % 10 == 0) {
+                static uint8_t rgb_buffer[640 * 480 * 3];
+                mjr_readPixels(rgb_buffer, NULL, viewport, &con);
+                std::lock_guard<std::mutex> lock(mtx);
+                memcpy(shm->camera_pixels, rgb_buffer, sizeof(rgb_buffer));
+            }
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -112,6 +139,8 @@ int main() {
     mj_deleteData(d_render);
     mj_deleteData(d_physics);
     mj_deleteModel(m);
+    munmap(shm, sizeof(SharedDataStruct));
+    shm_unlink("/robot_data_shm");
     glfwTerminate();
     return 0;
 }

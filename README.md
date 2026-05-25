@@ -5,6 +5,7 @@ A low-latency C++ simulation workspace built natively on MuJoCo and GLFW for swe
 * `/src` - C++ source files
 * `/models` - MuJoCo MJCF XML environment definitions
 * `/build` - Local compilation binaries (gitignored)
+* `/scripts` - Python utilities for consuming sim data (joint states, camera feed)
 
 ## Set up
 ### Prerequisites (WSL2 / Ubuntu)
@@ -12,6 +13,7 @@ A low-latency C++ simulation workspace built natively on MuJoCo and GLFW for swe
 sudo apt update
 sudo apt install -y build-essential cmake libmujoco-dev libglfw3-dev libqhull-dev
 ```
+
 ### Build
 ```bash
 mkdir -p build && cd build
@@ -22,6 +24,20 @@ make -j4
 Run the simulator from within the `build` directory:
 ```bash
 ./vla_sim_runner
+```
+
+### Python Consumer Setup
+Create and activate a virtual environment, then install dependencies:
+```bash
+cd scripts
+python3 -m venv venv
+source venv/bin/activate
+pip install -r ../requirements.txt
+```
+
+Run the consumer script after launching the simulator:
+```bash
+python3 consumer.py
 ```
 
 ## Progress

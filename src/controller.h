@@ -6,7 +6,7 @@ public:
     SweeperController(double kp, double kd);
     
     // Calculates and applies torques based on a target coordinate
-    void compute(const mjModel* m, mjData* d, double target_pos[7]);
+    void compute(const mjModel* m, mjData* d, double target_pos[6]);
 
 private:
     double Kp;

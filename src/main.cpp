@@ -24,8 +24,13 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
 
     SweeperController controller(90.0, 10.0);
 
+    static double max_latency = 0.0;
+    static double total_latency = 0.0;
+    static uint64_t frame_count = 0;
+
     while (!exit_simulation) {
-        auto next_tick = std::chrono::steady_clock::now() + timestep;
+        auto start_time = std::chrono::steady_clock::now();
+        auto next_tick = start_time + timestep;
 
         // Perform physics stepping
         {
@@ -42,6 +47,19 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
             shm->frame_index.fetch_add(1, std::memory_order_relaxed);
             mju_copy(shm->joint_states, d->qpos, 6);
             shm->frame_index.fetch_add(1, std::memory_order_release);
+        }
+
+        // Measure physics step latency
+        auto end_time = std::chrono::steady_clock::now();
+        std::chrono::duration<double, std::milli> elapsed = end_time - start_time;
+
+        double current_latency = elapsed.count();
+        max_latency = std::max(max_latency, current_latency);
+        total_latency += current_latency;
+        frame_count++;
+
+        if (frame_count % 5000 == 0) {
+            std::cout << "Physics profiler | Avg: " << (total_latency / frame_count) << "ms  |  max spike: " << max_latency << "ms" << std::endl;
         }
 
         // Enforce 500Hz loop rate (2ms per step)

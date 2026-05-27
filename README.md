@@ -42,3 +42,5 @@ python3 consumer.py
 
 ## Progress
 **Week 1 (17/05/2026):** Reviewed MuJoCo docs and initialized workspace. Custom environment `sweeping_scene.xml` created with dynamic physical pucks (red square, blue circle, green square) and dual target landing zones with target task defined. Integrated base UR5e asset and tested hardcoded joint movement. Developed a multi-threaded architecture to decouple physics calculations from visual rendering.
+
+**Week 2 (24/05/2026):** Implemented a shared-memory IPC pipeline allowing the producer (simulation environment) to stream sensor information to the consumer process. Profiled the physics loop to get average latency and max spike and validate it against the intended frequency. Technical dive dive #1 WIP.

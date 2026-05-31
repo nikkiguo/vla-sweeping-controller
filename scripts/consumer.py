@@ -7,7 +7,8 @@ import cv2
 # Matching the C++ struct layout for shared memory
 dtype = np.dtype([
     ('frame_index', 'u8'),
-    ('joint_states', 'f8', (6,)),
+    ('joint_pos', 'f8', (6,)),
+    ('joint_vel', 'f8', (6,)),
     ('camera_pixels', 'u1', (640 * 480 * 3,))
 ])
 
@@ -26,7 +27,8 @@ def run_consumer():
         while True:
             # Access the data directly from the buffer
             current_frame = data[0]['frame_index']
-            joints = data[0]['joint_states']
+            joint_pos = data[0]['joint_pos']
+            joint_vel = data[0]['joint_vel']
             camera_pixels = data[0]['camera_pixels']
 
             # Display and print state every 10 frames
@@ -36,7 +38,7 @@ def run_consumer():
                 cv2.imshow("VLA Sweeping Sandbox visual", cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
                 if cv2.waitKey(30) & 0xFF == ord('q'):
                     break
-                print(f"Frame: {current_frame} | Joint[0]: {joints[0]:.4f} | Joint[1]: {joints[1]:.4f} | Joint[2]: {joints[2]:.4f} | Joint[3]: {joints[3]:.4f} | Joint[4]: {joints[4]:.4f} | Joint[5]: {joints[5]:.4f}")
+                print(f"Frame: {current_frame} | Pos: {[f'{p:.4f}' for p in joint_pos]} | Vel: {[f'{v:.4f}' for v in joint_vel]}")
     except KeyboardInterrupt:
         print("Stopping consumer...")
     finally:

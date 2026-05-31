@@ -45,7 +45,8 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
 
             // Update shared memory with new state (positions and camera pixels)
             shm->frame_index.fetch_add(1, std::memory_order_relaxed);
-            mju_copy(shm->joint_states, d->qpos, 6);
+            mju_copy(shm->joint_pos, d->qpos, 6);
+            mju_copy(shm->joint_vel, d->qvel, 6);
             shm->frame_index.fetch_add(1, std::memory_order_release);
         }
 

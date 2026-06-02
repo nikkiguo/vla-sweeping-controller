@@ -14,7 +14,6 @@
 #include "ipc_common.h"
 
 // Shared resources
-std::mutex mtx;
 std::atomic<bool> exit_simulation{false};
 
 // Physics thread function
@@ -33,22 +32,18 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
         auto next_tick = start_time + timestep;
 
         // Perform physics stepping
-        {
-            // Lock only for the math
-            std::lock_guard<std::mutex> lock(mtx);
-            double target[6] = {0.0};
-            target[0] = sin(d->time);               // Base swings left/right
-            target[1] = -0.5 + 0.2*sin(d->time);    // Shoulder moves up/down gently
-            target[2] = 1.0;                        // Elbow stays bent
-            controller.compute(m, d, target);
-            mj_step(m, d);
+        double target[6] = {0.0};
+        target[0] = sin(d->time);               // Base swings left/right
+        target[1] = -0.5 + 0.2*sin(d->time);    // Shoulder moves up/down gently
+        target[2] = 1.0;                        // Elbow stays bent
+        controller.compute(m, d, target);
+        mj_step(m, d);
 
-            // Update shared memory with new state (positions and camera pixels)
-            shm->frame_index.fetch_add(1, std::memory_order_relaxed);
-            mju_copy(shm->joint_pos, d->qpos, 6);
-            mju_copy(shm->joint_vel, d->qvel, 6);
-            shm->frame_index.fetch_add(1, std::memory_order_release);
-        }
+        // Update shared memory with new state (positions and camera pixels)
+        shm->frame_index.fetch_add(1, std::memory_order_relaxed);
+        mju_copy(shm->joint_pos, d->qpos, 6);
+        mju_copy(shm->joint_vel, d->qvel, 6);
+        shm->frame_index.fetch_add(1, std::memory_order_release);
 
         // Measure physics step latency
         auto end_time = std::chrono::steady_clock::now();
@@ -117,14 +112,10 @@ int main() {
     std::thread physics_worker(physics_thread, m, d_physics, shm);
 
     while (!glfwWindowShouldClose(window)) {
-        {
-            // Lock mjData only long enough to copy state to the visual scene
-            std::lock_guard<std::mutex> lock(mtx);
-            // Copy physics state (positions and velocities) to render state
-            mju_copy(d_render->qpos, d_physics->qpos, m->nq);
-            mju_copy(d_render->qvel, d_physics->qvel, m->nv);
-            d_render->time = d_physics->time;
-        }
+        // Copy physics state (positions and velocities) to render state
+        mju_copy(d_render->qpos, d_physics->qpos, m->nq);
+        mju_copy(d_render->qvel, d_physics->qvel, m->nv);
+        d_render->time = d_physics->time;
 
         // Update kinematics
         mj_forward(m, d_render);
@@ -135,14 +126,13 @@ int main() {
         mjr_render(viewport, &scn, &con);
 
         // Capture framebuffer and write to shared memory (every 10 frames to match consumer display rate)
-        {
-            static int frame_count = 0;
-            if (frame_count++ % 10 == 0) {
-                static uint8_t rgb_buffer[640 * 480 * 3];
-                mjr_readPixels(rgb_buffer, NULL, viewport, &con);
-                std::lock_guard<std::mutex> lock(mtx);
-                memcpy(shm->camera_pixels, rgb_buffer, sizeof(rgb_buffer));
-            }
+        static int frame_count = 0;
+        if (frame_count++ % 10 == 0) {
+            static uint8_t rgb_buffer[640 * 480 * 3];
+            mjr_readPixels(rgb_buffer, NULL, viewport, &con);
+            shm->frame_index.fetch_add(1, std::memory_order_relaxed);
+            memcpy(shm->camera_pixels, rgb_buffer, sizeof(rgb_buffer));
+            shm->frame_index.fetch_add(1, std::memory_order_release);
         }
 
         glfwSwapBuffers(window);

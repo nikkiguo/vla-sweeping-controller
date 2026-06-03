@@ -31,12 +31,8 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
         auto start_time = std::chrono::steady_clock::now();
         auto next_tick = start_time + timestep;
 
-        // Perform physics stepping
-        double target[6] = {0.0};
-        target[0] = sin(d->time);               // Base swings left/right
-        target[1] = -0.5 + 0.2*sin(d->time);    // Shoulder moves up/down gently
-        target[2] = 1.0;                        // Elbow stays bent
-        controller.compute(m, d, target);
+        // Perform physics stepping using IK target following
+        controller.compute(m, d);
         mj_step(m, d);
 
         // Update shared memory with new state (positions and camera pixels)
@@ -55,7 +51,7 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
         frame_count++;
 
         if (frame_count % 5000 == 0) {
-            std::cout << "Physics profiler | Avg: " << (total_latency / frame_count) << "ms  |  max spike: " << max_latency << "ms" << std::endl;
+            std::cout << "[main]: Physics profiler | Avg: " << (total_latency / frame_count) << "ms  |  max spike: " << max_latency << "ms" << std::endl;
         }
 
         // Enforce 500Hz loop rate (2ms per step)
@@ -69,7 +65,7 @@ int main() {
     
     // Check if XML loading failed
     if (!m) {
-        std::cerr << "Failed to load XML model: " << error << std::endl;
+        std::cerr << "[main]: Failed to load XML model: " << error << std::endl;
         return 1;
     }
     
@@ -78,14 +74,14 @@ int main() {
 
     // Initialize GLFW
     if (!glfwInit()) {
-        std::cerr << "Failed to initialize GLFW" << std::endl;
+        std::cerr << "[main]: Failed to initialize GLFW" << std::endl;
         mj_deleteModel(m);
         return 1;
     }
     
     GLFWwindow* window = glfwCreateWindow(640, 480, "VLA Sweeping Sandbox", NULL, NULL);
     if (!window) {
-        std::cerr << "Failed to create GLFW window" << std::endl;
+        std::cerr << "[main]: Failed to create GLFW window" << std::endl;
         mj_deleteModel(m);
         mj_deleteData(d_render);
         mj_deleteData(d_physics);

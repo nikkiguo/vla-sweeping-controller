@@ -13,6 +13,9 @@ public:
     // Joint velocities are computed directly from task-space end effector error
     void compute(const mjModel* m, mjData* d);
 
+    // Enable or disable keyboard teleoperation (when disabled, controller will sample random targets)
+    void setTeleopEnabled(bool enabled);
+
 private:
     double Kp;
     double Kd;
@@ -20,6 +23,7 @@ private:
     int end_site_id;
     double current_target[3];
     double next_target_time;
+    bool teleop_enabled;
 
     std::vector<double> jacp;
 

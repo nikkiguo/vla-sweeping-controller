@@ -4,11 +4,15 @@
 #include <ctime>
 #include <iostream>
 
-SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), next_target_time(0.0) {
+SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), next_target_time(0.0), teleop_enabled(true) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
     current_target[0] = 0.3;
     current_target[1] = 0.0;
     current_target[2] = 0.35;
+}
+
+void SweeperController::setTeleopEnabled(bool enabled) {
+    teleop_enabled = enabled;
 }
 
 void SweeperController::initialize(const mjModel* m, mjData* d) {
@@ -25,7 +29,10 @@ void SweeperController::initialize(const mjModel* m, mjData* d) {
 
     // Resize Jacobian storage based on model dimensions
     jacp.resize(3 * m->nv);
-    // sampleRandomTarget(d->time);
+    // Sample an initial random target only when teleoperation is disabled
+    if (!teleop_enabled) {
+        sampleRandomTarget(d->time);
+    }
 }
 
 // Sample a random double in a specified range
@@ -67,14 +74,16 @@ void SweeperController::compute(const mjModel* m, mjData* d) {
     double* site_pos = d->site_xpos + 3 * end_site_id;
     double error[3] = {current_target[0] - site_pos[0], current_target[1] - site_pos[1], current_target[2] - site_pos[2]};
 
-    // Refresh target if needed (when close enough to current target or after a timeout)
-    // Disabled for keyboard teleoperation
-    // if (mju_norm3(error) < 0.03 || d->time >= next_target_time) {
-    //     sampleRandomTarget(d->time);
-    //     error[0] = current_target[0] - site_pos[0];
-    //     error[1] = current_target[1] - site_pos[1];
-    //     error[2] = current_target[2] - site_pos[2];
-    // }
+        // Refresh target if needed (when close enough to current target or after a timeout)
+        // Only run auto-switching when teleoperation is disabled
+        if (!teleop_enabled) {
+            if (mju_norm3(error) < 0.03 || d->time >= next_target_time) {
+                sampleRandomTarget(d->time);
+                error[0] = current_target[0] - site_pos[0];
+                error[1] = current_target[1] - site_pos[1];
+                error[2] = current_target[2] - site_pos[2];
+            }
+        }
 
     // Get Jacobian for the end effector site
     // The Jacobian is made up of partial derivatives that tell us how changes in joint angles affect the position of the end effector in 3D space

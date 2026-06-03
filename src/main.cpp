@@ -71,7 +71,7 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
     }
 }
 
-int main() {
+int main(int argc, char** argv) {
     char error[1000];
     mjModel* m = mj_loadXML("../models/sweeping_scene.xml", 0, error, 1000);
     
@@ -116,8 +116,18 @@ int main() {
     ftruncate(shm_fd, sizeof(SharedDataStruct));
     SharedDataStruct* shm = (SharedDataStruct*)mmap(NULL, sizeof(SharedDataStruct), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
+    // Parse CLI flag: --random to run random target mode, default is teleop
+    bool teleop = true;
+    if (argc > 1 && std::strcmp(argv[1], "--random") == 0) {
+        teleop = false;
+        std::cout << "[main]: Starting in RANDOM target mode" << std::endl;
+    } else {
+        std::cout << "[main]: Starting in TELEOP mode (use --random for autonomous)" << std::endl;
+    }
+
     // Create the controller
     SweeperController controller(90.0, 10.0);
+    controller.setTeleopEnabled(teleop);
     controller.setTarget(0.3, 0.0, 0.35);
 
     // Teleoperation state
@@ -150,8 +160,10 @@ int main() {
             shm->frame_index.fetch_add(1, std::memory_order_release);
         }
 
-        // Handle keyboard teleoperation
-        handleKeyboardInput(window, controller, target_x, target_y, target_z);
+        // Handle keyboard teleoperation (only when enabled)
+        if (teleop) {
+            handleKeyboardInput(window, controller, target_x, target_y, target_z);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();

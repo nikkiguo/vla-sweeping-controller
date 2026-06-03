@@ -6,6 +6,9 @@ class SweeperController {
 public:
     SweeperController(double kp, double kd);
 
+    // Set the desired end-effector target position (for teleoperation)
+    void setTarget(double x, double y, double z);
+
     // Calculates and applies torques to track a desired joint velocity
     // Joint velocities are computed directly from task-space end effector error
     void compute(const mjModel* m, mjData* d);

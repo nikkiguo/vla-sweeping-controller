@@ -16,12 +16,24 @@
 // Shared resources
 std::atomic<bool> exit_simulation{false};
 
+// Handle keyboard input for teleoperation
+void handleKeyboardInput(GLFWwindow* window, SweeperController& controller, double& target_x, double& target_y, double& target_z) {
+    const double step = 0.02;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) target_y += step;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) target_y -= step;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) target_x -= step;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) target_x += step;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) target_z -= step;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) target_z += step;
+
+    controller.setTarget(target_x, target_y, target_z);
+}
+
 // Physics thread function
-void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
+void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperController* controller) {
     // Match the timestep defined in sweeping_scene.xml (0.002s = 2ms = 500 Hz)
     auto timestep = std::chrono::milliseconds(2);
-
-    SweeperController controller(90.0, 10.0);
 
     static double max_latency = 0.0;
     static double total_latency = 0.0;
@@ -32,7 +44,7 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm) {
         auto next_tick = start_time + timestep;
 
         // Perform physics stepping using IK target following
-        controller.compute(m, d);
+        controller->compute(m, d);
         mj_step(m, d);
 
         // Update shared memory with new state (positions and camera pixels)
@@ -104,8 +116,15 @@ int main() {
     ftruncate(shm_fd, sizeof(SharedDataStruct));
     SharedDataStruct* shm = (SharedDataStruct*)mmap(NULL, sizeof(SharedDataStruct), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
+    // Create the controller
+    SweeperController controller(90.0, 10.0);
+    controller.setTarget(0.3, 0.0, 0.35);
+
+    // Teleoperation state
+    double target_x = 0.3, target_y = 0.0, target_z = 0.35;
+
     // Start the physics thread
-    std::thread physics_worker(physics_thread, m, d_physics, shm);
+    std::thread physics_worker(physics_thread, m, d_physics, shm, &controller);
 
     while (!glfwWindowShouldClose(window)) {
         // Copy physics state (positions and velocities) to render state
@@ -130,6 +149,9 @@ int main() {
             memcpy(shm->camera_pixels, rgb_buffer, sizeof(rgb_buffer));
             shm->frame_index.fetch_add(1, std::memory_order_release);
         }
+
+        // Handle keyboard teleoperation
+        handleKeyboardInput(window, controller, target_x, target_y, target_z);
 
         glfwSwapBuffers(window);
         glfwPollEvents();

@@ -25,7 +25,7 @@ void SweeperController::initialize(const mjModel* m, mjData* d) {
 
     // Resize Jacobian storage based on model dimensions
     jacp.resize(3 * m->nv);
-    sampleRandomTarget(d->time);
+    // sampleRandomTarget(d->time);
 }
 
 // Sample a random double in a specified range
@@ -41,6 +41,14 @@ void SweeperController::sampleRandomTarget(double current_time) {
     next_target_time = current_time + randomDouble(3.0, 5.0);
 
     std::cout << "[SweeperController]: New random IK target: [" << current_target[0] << ", " << current_target[1] << ", " << current_target[2] << "]" << std::endl;
+}
+
+// Set the current target explicitly (used for keyboard teleoperation)
+void SweeperController::setTarget(double x, double y, double z) {
+    current_target[0] = x;
+    current_target[1] = y;
+    current_target[2] = z;
+    next_target_time = 0.0;
 }
 
 void SweeperController::compute(const mjModel* m, mjData* d) {
@@ -60,12 +68,13 @@ void SweeperController::compute(const mjModel* m, mjData* d) {
     double error[3] = {current_target[0] - site_pos[0], current_target[1] - site_pos[1], current_target[2] - site_pos[2]};
 
     // Refresh target if needed (when close enough to current target or after a timeout)
-    if (mju_norm3(error) < 0.03 || d->time >= next_target_time) {
-        sampleRandomTarget(d->time);
-        error[0] = current_target[0] - site_pos[0];
-        error[1] = current_target[1] - site_pos[1];
-        error[2] = current_target[2] - site_pos[2];
-    }
+    // Disabled for keyboard teleoperation
+    // if (mju_norm3(error) < 0.03 || d->time >= next_target_time) {
+    //     sampleRandomTarget(d->time);
+    //     error[0] = current_target[0] - site_pos[0];
+    //     error[1] = current_target[1] - site_pos[1];
+    //     error[2] = current_target[2] - site_pos[2];
+    // }
 
     // Get Jacobian for the end effector site
     // The Jacobian is made up of partial derivatives that tell us how changes in joint angles affect the position of the end effector in 3D space

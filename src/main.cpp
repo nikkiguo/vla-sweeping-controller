@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <cstring>
+#include <cstdlib>
 #include "controller.h"
 #include "ipc_common.h"
 
@@ -28,6 +29,39 @@ void handleKeyboardInput(GLFWwindow* window, SweeperController& controller, doub
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) target_z += step;
 
     controller.setTarget(target_x, target_y, target_z);
+}
+
+static void randomizePuckPositions(mjModel* m, mjData* d) {
+    mj_resetData(m, d);
+    const char* bodies[3] = {"red_box", "blue_puck", "green_puck"};
+    const double min_x = -0.12;
+    const double max_x =  0.12;
+    const double min_y = -0.42;
+    const double max_y = -0.32;
+
+    for (int i = 0; i < 3; ++i) {
+        // Find the body ID by name in the robot model
+        int body_id = mj_name2id(m, mjOBJ_BODY, bodies[i]);
+        if (body_id < 0) {
+            std::cerr << "[main]: Cannot find '" << bodies[i] << "'" << std::endl;
+            continue;
+        }
+
+        // Randomize the position of the body within the defined bounds
+        int jid = m->body_jntadr[body_id];
+        int qpos_adr = m->jnt_qposadr[jid];
+        d->qpos[qpos_adr + 0] = min_x + (max_x - min_x) * (std::rand() / static_cast<double>(RAND_MAX));
+        d->qpos[qpos_adr + 1] = min_y + (max_y - min_y) * (std::rand() / static_cast<double>(RAND_MAX));
+        d->qpos[qpos_adr + 2] = 0.2;
+        d->qpos[qpos_adr + 3] = 1.0;
+        d->qpos[qpos_adr + 4] = 0.0;
+        d->qpos[qpos_adr + 5] = 0.0;
+        d->qpos[qpos_adr + 6] = 0.0;
+
+        mju_zero(d->qvel + m->jnt_dofadr[jid], 6);
+    }
+
+    mj_forward(m, d);
 }
 
 // Physics thread function
@@ -132,6 +166,9 @@ int main(int argc, char** argv) {
 
     // Teleoperation state
     double target_x = 0.3, target_y = 0.0, target_z = 0.35;
+
+    // Randomize puck positions at the start of the episode
+    randomizePuckPositions(m, d_physics);
 
     // Start the physics thread
     std::thread physics_worker(physics_thread, m, d_physics, shm, &controller);

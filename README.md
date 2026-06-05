@@ -45,4 +45,4 @@ python3 consumer.py
 
 **Week 2 (24/05/2026):** Implemented a shared-memory IPC pipeline allowing the producer (simulation environment) to stream sensor information to the consumer process. Profiled the physics loop to get average latency and max spike and validate it against the intended frequency. Technical deep dive #1 WIP.
 
-**Week 3 (31/05/2026):** Changed control system from joint space to task space. Implemented inverse kinematics using a Jacobian solver. Tuned PD gains to stabilize end-effector motion.
+**Week 3 (31/05/2026):** Changed control system from joint space to task space. Implemented inverse kinematics using a Jacobian solver. Tuned PD gains to stabilize end-effector motion. Added keyboard teleop control and randomized puck placement at start of each episode.

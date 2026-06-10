@@ -26,9 +26,9 @@
         <geom name="floor" type="plane" size="1 1 0.01" pos="0 0 0" material="groundplane"/>
 
         <!-- Target landing zones -->
-        <geom name="zone_green" type="cylinder" pos="0.40 -0.55 0.001" size="0.11 0.001" rgba="0 1 0 0.35" contype="0" conaffinity="0"/>
-        <geom name="zone_blue"  type="cylinder" pos="0.0 -0.18 0.001"  size="0.11 0.001" rgba="0 0 1 0.35" contype="0" conaffinity="0"/>
-        <geom name="zone_red"   type="cylinder" pos="-0.40 -0.55 0.001" size="0.11 0.001" rgba="1 0 0 0.35" contype="0" conaffinity="0"/>
+        <geom name="zone_green" type="cylinder" pos="0.50 -0.45 0.001" size="0.11 0.001" rgba="0 1 0 0.35" contype="0" conaffinity="0"/>
+        <geom name="zone_blue"  type="cylinder" pos="0.0 -0.62 0.001"  size="0.11 0.001" rgba="0 0 1 0.35" contype="0" conaffinity="0"/>
+        <geom name="zone_red"   type="cylinder" pos="-0.50 -0.45 0.001" size="0.11 0.001" rgba="1 0 0 0.35" contype="0" conaffinity="0"/>
         
         <!-- Red Square Puck -->
         <body name="red_box" pos="0.2 -0.4 0.2">
@@ -36,10 +36,10 @@
             <geom type="box" size="0.05 0.05 0.05" rgba="1 0 0 1" friction="0.2 0.05 0.001"/>
         </body>
 
-        <!-- Blue Circular Puck -->
+        <!-- Blue Square Puck -->
         <body name="blue_puck" pos="0.0 -0.4 0.2">
             <joint type="free"/>
-            <geom type="cylinder" size="0.05 0.05" rgba="0 0 1 1" friction="1.0 0.1 0.8"/>
+            <geom type="box" size="0.05 0.05 0.05" rgba="0 0 1 1" friction="0.2 0.05 0.001"/>
         </body>
 
         <!-- Green Square Puck -->

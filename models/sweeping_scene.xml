@@ -34,7 +34,7 @@
         <!-- Blue Circular Puck -->
         <body name="blue_puck" pos="0.0 -0.4 0.2">
             <joint type="free"/>
-            <geom type="cylinder" size="0.05 0.05" rgba="0 0 1 1" friction="0.2 0.05 0.001"/>
+            <geom type="cylinder" size="0.05 0.05" rgba="0 0 1 1" friction="1.0 0.1 0.8"/>
         </body>
 
         <!-- Green Square Puck -->

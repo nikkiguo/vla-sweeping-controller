@@ -26,6 +26,13 @@ Run the simulator from within the `build` directory:
 ./vla_sim_runner
 ```
 
+#### Flags
+| Flag | Mode | Description |
+|------|------|-------------|
+| *(none)* | Teleop (default) | Keyboard teleoperation of the end-effector: `W`/`S` move along +Y/-Y, `A`/`D` along -X/+X, `Q`/`E` along -Z/+Z. |
+| `--auto` | Auto sweep | Autonomously sweeps the pucks into their goal zones. |
+| `--random` | Random targets | Samples random end-effector targets. |
+
 ### Python Consumer Setup
 Create and activate a virtual environment, then install dependencies:
 ```bash
@@ -46,3 +53,5 @@ python3 consumer.py
 **Week 2 (24/05/2026):** Implemented a shared-memory IPC pipeline allowing the producer (simulation environment) to stream sensor information to the consumer process. Profiled the physics loop to get average latency and max spike and validate it against the intended frequency. Technical deep dive #1 WIP.
 
 **Week 3 (31/05/2026):** Changed control system from joint space to task space. Implemented inverse kinematics using a Jacobian solver. Tuned PD gains to stabilize end-effector motion. Added keyboard teleop control and randomized puck placement at start of each episode.
+
+**Week 4 (07/06/2026):** Prep for automated data collection of sweeping task episodes. Implemented auto sweeping state machine to push pucks into their goal zones. 

@@ -167,6 +167,7 @@ int main(int argc, char** argv) {
     // Create the controller
     SweeperController controller(90.0, 10.0);
     controller.setTeleopEnabled(teleop);
+    controller.setAutoSweepEnabled(auto_sweep);
     controller.setTarget(0.3, 0.0, 0.35);
 
     // Teleoperation state

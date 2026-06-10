@@ -16,6 +16,9 @@ public:
     // Enable or disable keyboard teleoperation (when disabled, controller will sample random targets)
     void setTeleopEnabled(bool enabled);
 
+    // Enable autonomous sweeping (pushes each puck into its matching goal zone)
+    void setAutoSweepEnabled(bool enabled);
+
 private:
     double Kp;
     double Kd;
@@ -25,8 +28,18 @@ private:
     double next_target_time;
     bool teleop_enabled;
 
+    // state machine for sweeping pucks into goal zones autonomously
+    enum class SweepPhase { Lift, Approach, Descend, Push, Retreat, Done };
+    bool auto_sweep_enabled;
+    SweepPhase sweep_phase;
+    int sweep_task;
+    double sweep_phase_start;
+    int puck_body_ids[3];
+    double goal_xy[3][2];
+
     std::vector<double> jacp;
 
     void initialize(const mjModel* m, mjData* d);
     void sampleRandomTarget(double current_time);
+    void updateAutoSweep(const mjModel* m, mjData* d);
 };

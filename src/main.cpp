@@ -150,13 +150,18 @@ int main(int argc, char** argv) {
     ftruncate(shm_fd, sizeof(SharedDataStruct));
     SharedDataStruct* shm = (SharedDataStruct*)mmap(NULL, sizeof(SharedDataStruct), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 
-    // Parse CLI flag: --random to run random target mode, default is teleop
+    // Parse CLI flag: --auto sweeps pucks into goal zones, --random samples random targets, default is teleop
     bool teleop = true;
+    bool auto_sweep = false;
     if (argc > 1 && std::strcmp(argv[1], "--random") == 0) {
         teleop = false;
         std::cout << "[main]: Starting in RANDOM target mode" << std::endl;
+    } else if (argc > 1 && std::strcmp(argv[1], "--auto") == 0) {
+        teleop = false;
+        auto_sweep = true;
+        std::cout << "[main]: Starting in AUTO sweep mode" << std::endl;
     } else {
-        std::cout << "[main]: Starting in TELEOP mode (use --random for autonomous)" << std::endl;
+        std::cout << "[main]: Starting in TELEOP mode (use --auto for autonomous sweeping, --random for random targets)" << std::endl;
     }
 
     // Create the controller

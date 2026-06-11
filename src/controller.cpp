@@ -4,7 +4,7 @@
 #include <ctime>
 #include <iostream>
 
-SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), next_target_time(0.0), teleop_enabled(true),
+SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), smoothed_target_valid(false), next_target_time(0.0), teleop_enabled(true),
     auto_sweep_enabled(false), sweep_phase(SweepPhase::Lift), sweep_task(0), sweep_phase_start(0.0) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
     current_target[0] = 0.3;
@@ -237,11 +237,27 @@ void SweeperController::compute(const mjModel* m, mjData* d) {
     if (!teleop_enabled && !auto_sweep_enabled) {
         if (mju_norm3(error) < 0.03 || d->time >= next_target_time) {
             sampleRandomTarget(d->time);
-            error[0] = current_target[0] - site_pos[0];
-            error[1] = current_target[1] - site_pos[1];
-            error[2] = current_target[2] - site_pos[2];
         }
     }
+
+    // Smooth the target position to avoid jittering
+    if (!smoothed_target_valid) {
+        mju_copy3(smoothed_target, site_pos);
+        smoothed_target_valid = true;
+    }
+    const double target_speed = 0.35;
+    double max_step = target_speed * m->opt.timestep;
+    double to_target[3];
+    mju_sub3(to_target, current_target, smoothed_target);
+    double to_target_norm = mju_norm3(to_target);
+    if (to_target_norm <= max_step) {
+        mju_copy3(smoothed_target, current_target);
+    } else {
+        mju_addToScl3(smoothed_target, to_target, max_step / to_target_norm);
+    }
+
+    // Track the smoothed target rather than the raw waypoint
+    mju_sub3(error, smoothed_target, site_pos);
 
     // Get Jacobian for the end effector site
     // The Jacobian is made up of partial derivatives that tell us how changes in joint angles affect the position of the end effector in 3D space

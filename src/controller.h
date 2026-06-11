@@ -25,6 +25,8 @@ private:
 
     int end_site_id;
     double current_target[3];
+    double smoothed_target[3];
+    bool smoothed_target_valid;
     double next_target_time;
     bool teleop_enabled;
 

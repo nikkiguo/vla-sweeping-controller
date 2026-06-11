@@ -19,6 +19,12 @@ public:
     // Enable autonomous sweeping (pushes each puck into its matching goal zone)
     void setAutoSweepEnabled(bool enabled);
 
+    // True once all pucks are delivered and the arm is parking
+    bool isDone();
+
+    // Restart the sweeping state machine for a fresh episode
+    void resetEpisode();
+
 private:
     double Kp;
     double Kd;

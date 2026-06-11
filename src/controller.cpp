@@ -27,6 +27,20 @@ void SweeperController::setAutoSweepEnabled(bool enabled) {
     auto_sweep_enabled = enabled;
 }
 
+bool SweeperController::isDone() {
+    return auto_sweep_enabled && sweep_phase == SweepPhase::Done;
+}
+
+void SweeperController::resetEpisode() {
+    sweep_task = 0;
+    sweep_phase = SweepPhase::Lift;
+    sweep_phase_start = 0.0;
+    smoothed_target_valid = false;
+    current_target[0] = 0.3;
+    current_target[1] = 0.0;
+    current_target[2] = 0.35;
+}
+
 void SweeperController::initialize(const mjModel* m, mjData* d) {
     if (end_site_id >= 0) {
         return;

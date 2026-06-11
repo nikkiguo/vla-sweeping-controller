@@ -100,6 +100,23 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
             std::cout << "[main]: Physics profiler | Avg: " << (total_latency / frame_count) << "ms  |  max spike: " << max_latency << "ms" << std::endl;
         }
 
+        // Reset the scene once the task is done, after letting the arm park for 2s
+        static double done_since = -1.0;
+        if (controller->isDone()) {
+            if (done_since < 0.0) {
+                done_since = d->time;
+            }
+
+            if (d->time - done_since > 2.0) {
+                std::cout << "[main]: Episode complete, resetting scene" << std::endl;
+                randomizePuckPositions(m, d);
+                controller->resetEpisode();
+                done_since = -1.0;
+            }
+        } else {
+            done_since = -1.0;
+        }
+
         // Enforce 500Hz loop rate (2ms per step)
         std::this_thread::sleep_until(next_tick);
     }

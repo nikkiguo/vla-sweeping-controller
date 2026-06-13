@@ -81,10 +81,18 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
         controller->compute(m, d);
         mj_step(m, d);
 
+        // Snapshot controller action label and EE state before publishing
+        double action_target[3];
+        double ee_pos[3];
+        controller->getTarget(action_target);
+        controller->getEEPos(ee_pos);
+
         // Update shared memory with new state (positions and camera pixels)
         shm->frame_index.fetch_add(1, std::memory_order_relaxed);
         mju_copy(shm->joint_pos, d->qpos, 6);
         mju_copy(shm->joint_vel, d->qvel, 6);
+        mju_copy(shm->action_target, action_target, 3);
+        mju_copy(shm->ee_pos, ee_pos, 3);
         shm->frame_index.fetch_add(1, std::memory_order_release);
 
         // Measure physics step latency
@@ -109,6 +117,12 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
 
             if (d->time - done_since > 2.0) {
                 std::cout << "[main]: Episode complete, resetting scene" << std::endl;
+                // Update shared memory with episode success and ID
+                shm->frame_index.fetch_add(1, std::memory_order_relaxed);
+                shm->episode_success = controller->wasSuccessful() ? 1 : 0;
+                shm->episode_id++;
+                shm->frame_index.fetch_add(1, std::memory_order_release);
+
                 randomizePuckPositions(m, d);
                 controller->resetEpisode();
                 done_since = -1.0;

@@ -1,5 +1,7 @@
 #pragma once
 #include <mujoco/mujoco.h>
+#include <atomic>
+#include <cstdint>
 #include <vector>
 
 class SweeperController {
@@ -28,11 +30,14 @@ public:
     // Copy the current end-effector target (the action label) into out
     void getTarget(double out[3]) const;
 
-    // Copy the latest end-effector position into out (cached during compute)
-    void getEEPos(double out[3]) const;
-
     // True when the sweep state machine has reached the Done phase
     bool wasSuccessful() const;
+
+    // Monotonic episode counter incremented on each resetEpisode()
+    uint32_t getEpisodeId() const;
+
+    // Episode success flag. 1 if the last finished episode is Done
+    uint8_t getEpisodeSuccess() const;
 
 private:
     double Kp;
@@ -40,11 +45,12 @@ private:
 
     int end_site_id;
     double current_target[3];
-    double ee_pos[3];
     double smoothed_target[3];
     bool smoothed_target_valid;
     double next_target_time;
     bool teleop_enabled;
+    std::atomic<uint32_t> episode_id;
+    std::atomic<uint8_t> episode_success;
 
     // state machine for sweeping pucks into goal zones autonomously
     enum class SweepPhase { Lift, Approach, Descend, Push, Retreat, Done };

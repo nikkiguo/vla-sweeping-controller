@@ -4,15 +4,12 @@
 #include <ctime>
 #include <iostream>
 
-SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), smoothed_target_valid(false), next_target_time(0.0), teleop_enabled(true),
-    auto_sweep_enabled(false), sweep_phase(SweepPhase::Lift), sweep_task(0), sweep_phase_start(0.0) {
+SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_site_id(-1), smoothed_target_valid(false), next_target_time(0.0), teleop_enabled(true), 
+    episode_id(0), episode_success(0), auto_sweep_enabled(false), sweep_phase(SweepPhase::Lift), sweep_task(0), sweep_phase_start(0.0) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
     current_target[0] = 0.3;
     current_target[1] = 0.0;
     current_target[2] = 0.35;
-    ee_pos[0] = 0.0;
-    ee_pos[1] = 0.0;
-    ee_pos[2] = 0.0;
 
     // Initialize puck body IDs and goal zone positions for auto-sweep
     for (int i = 0; i < 3; ++i) {
@@ -40,17 +37,23 @@ void SweeperController::getTarget(double out[3]) const {
     out[2] = current_target[2];
 }
 
-void SweeperController::getEEPos(double out[3]) const {
-    out[0] = ee_pos[0];
-    out[1] = ee_pos[1];
-    out[2] = ee_pos[2];
-}
-
 bool SweeperController::wasSuccessful() const {
     return sweep_phase == SweepPhase::Done;
 }
 
+uint32_t SweeperController::getEpisodeId() const {
+    return episode_id.load(std::memory_order_relaxed);
+}
+
+uint8_t SweeperController::getEpisodeSuccess() const {
+    return episode_success.load(std::memory_order_relaxed);
+}
+
 void SweeperController::resetEpisode() {
+    // Record the outcome of the episode that just finished before clearing the phase
+    episode_success.store(sweep_phase == SweepPhase::Done ? 1 : 0, std::memory_order_relaxed);
+    episode_id.fetch_add(1, std::memory_order_relaxed);
+
     sweep_task = 0;
     sweep_phase = SweepPhase::Lift;
     sweep_phase_start = 0.0;
@@ -263,7 +266,6 @@ void SweeperController::compute(const mjModel* m, mjData* d) {
 
     // Get error in 3D space (error = target_position - current_end_effector_position)
     double* site_pos = d->site_xpos + 3 * end_site_id;
-    mju_copy3(ee_pos, site_pos);
     double error[3] = {current_target[0] - site_pos[0], current_target[1] - site_pos[1], current_target[2] - site_pos[2]};
 
     // Refresh target if needed (when close enough to current target or after a timeout)

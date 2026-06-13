@@ -65,7 +65,7 @@ static void randomizePuckPositions(mjModel* m, mjData* d) {
 }
 
 // Physics thread function
-void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperController* controller) {
+void physics_thread(mjModel* m, mjData* d, SweeperController* controller) {
     // Match the timestep defined in sweeping_scene.xml (0.002s = 2ms = 500 Hz)
     auto timestep = std::chrono::milliseconds(2);
 
@@ -80,20 +80,6 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
         // Perform physics stepping using IK target following
         controller->compute(m, d);
         mj_step(m, d);
-
-        // Snapshot controller action label and EE state before publishing
-        double action_target[3];
-        double ee_pos[3];
-        controller->getTarget(action_target);
-        controller->getEEPos(ee_pos);
-
-        // Update shared memory with new state (positions and camera pixels)
-        shm->frame_index.fetch_add(1, std::memory_order_relaxed);
-        mju_copy(shm->joint_pos, d->qpos, 6);
-        mju_copy(shm->joint_vel, d->qvel, 6);
-        mju_copy(shm->action_target, action_target, 3);
-        mju_copy(shm->ee_pos, ee_pos, 3);
-        shm->frame_index.fetch_add(1, std::memory_order_release);
 
         // Measure physics step latency
         auto end_time = std::chrono::steady_clock::now();
@@ -117,12 +103,6 @@ void physics_thread(mjModel* m, mjData* d, SharedDataStruct* shm, SweeperControl
 
             if (d->time - done_since > 2.0) {
                 std::cout << "[main]: Episode complete, resetting scene" << std::endl;
-                // Update shared memory with episode success and ID
-                shm->frame_index.fetch_add(1, std::memory_order_relaxed);
-                shm->episode_success = controller->wasSuccessful() ? 1 : 0;
-                shm->episode_id++;
-                shm->frame_index.fetch_add(1, std::memory_order_release);
-
                 randomizePuckPositions(m, d);
                 controller->resetEpisode();
                 done_since = -1.0;
@@ -207,8 +187,13 @@ int main(int argc, char** argv) {
     // Randomize puck positions at the start of the episode
     randomizePuckPositions(m, d_physics);
 
+    int render_site_id = mj_name2id(m, mjOBJ_SITE, "attachment_site");
+    if (render_site_id < 0) {
+        std::cerr << "[main]: cannot find end effector site 'attachment_site'; ee_pos will be unset" << std::endl;
+    }
+
     // Start the physics thread
-    std::thread physics_worker(physics_thread, m, d_physics, shm, &controller);
+    std::thread physics_worker(physics_thread, m, d_physics, &controller);
 
     while (!glfwWindowShouldClose(window)) {
         // Copy physics state (positions and velocities) to render state
@@ -224,13 +209,25 @@ int main(int argc, char** argv) {
         mjv_updateScene(m, d_render, &opt, NULL, &cam, mjCAT_ALL, &scn);
         mjr_render(viewport, &scn, &con);
 
-        // Capture framebuffer and write to shared memory (every 10 frames to match consumer display rate)
+        // Publish one consistent snapshot to shared memory (every 10 frames to match consumer display rate)
         static int frame_count = 0;
         if (frame_count++ % 10 == 0) {
             static uint8_t rgb_buffer[640 * 480 * 3];
             mjr_readPixels(rgb_buffer, NULL, viewport, &con);
+
+            double action_target[3];
+            controller.getTarget(action_target);
+
             shm->frame_index.fetch_add(1, std::memory_order_relaxed);
+            mju_copy(shm->joint_pos, d_render->qpos, 6);
+            mju_copy(shm->joint_vel, d_render->qvel, 6);
+            mju_copy(shm->action_target, action_target, 3);
+            if (render_site_id >= 0) {
+                mju_copy(shm->ee_pos, d_render->site_xpos + 3 * render_site_id, 3);
+            }
             memcpy(shm->camera_pixels, rgb_buffer, sizeof(rgb_buffer));
+            shm->episode_id = controller.getEpisodeId();
+            shm->episode_success = controller.getEpisodeSuccess();
             shm->frame_index.fetch_add(1, std::memory_order_release);
         }
 

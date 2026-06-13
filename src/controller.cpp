@@ -10,6 +10,9 @@ SweeperController::SweeperController(double kp, double kd): Kp(kp), Kd(kd), end_
     current_target[0] = 0.3;
     current_target[1] = 0.0;
     current_target[2] = 0.35;
+    ee_pos[0] = 0.0;
+    ee_pos[1] = 0.0;
+    ee_pos[2] = 0.0;
 
     // Initialize puck body IDs and goal zone positions for auto-sweep
     for (int i = 0; i < 3; ++i) {
@@ -27,8 +30,24 @@ void SweeperController::setAutoSweepEnabled(bool enabled) {
     auto_sweep_enabled = enabled;
 }
 
-bool SweeperController::isDone() {
+bool SweeperController::isDone() const {
     return auto_sweep_enabled && sweep_phase == SweepPhase::Done;
+}
+
+void SweeperController::getTarget(double out[3]) const {
+    out[0] = current_target[0];
+    out[1] = current_target[1];
+    out[2] = current_target[2];
+}
+
+void SweeperController::getEEPos(double out[3]) const {
+    out[0] = ee_pos[0];
+    out[1] = ee_pos[1];
+    out[2] = ee_pos[2];
+}
+
+bool SweeperController::wasSuccessful() const {
+    return sweep_phase == SweepPhase::Done;
 }
 
 void SweeperController::resetEpisode() {
@@ -244,6 +263,7 @@ void SweeperController::compute(const mjModel* m, mjData* d) {
 
     // Get error in 3D space (error = target_position - current_end_effector_position)
     double* site_pos = d->site_xpos + 3 * end_site_id;
+    mju_copy3(ee_pos, site_pos);
     double error[3] = {current_target[0] - site_pos[0], current_target[1] - site_pos[1], current_target[2] - site_pos[2]};
 
     // Refresh target if needed (when close enough to current target or after a timeout)

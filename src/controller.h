@@ -20,10 +20,19 @@ public:
     void setAutoSweepEnabled(bool enabled);
 
     // True once all pucks are delivered and the arm is parking
-    bool isDone();
+    bool isDone() const;
 
     // Restart the sweeping state machine for a fresh episode
     void resetEpisode();
+
+    // Copy the current end-effector target (the action label) into out
+    void getTarget(double out[3]) const;
+
+    // Copy the latest end-effector position into out (cached during compute)
+    void getEEPos(double out[3]) const;
+
+    // True when the sweep state machine has reached the Done phase
+    bool wasSuccessful() const;
 
 private:
     double Kp;
@@ -31,6 +40,7 @@ private:
 
     int end_site_id;
     double current_target[3];
+    double ee_pos[3];
     double smoothed_target[3];
     bool smoothed_target_valid;
     double next_target_time;
